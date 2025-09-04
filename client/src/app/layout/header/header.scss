@@ -13,3 +13,9 @@
 
 
 
+a{
+  &.active {
+    font-weight: bold;
+    color: #7000fa;
+  }
+}
