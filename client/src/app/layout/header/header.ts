@@ -1,3 +1,4 @@
+import { CartService } from './../../core/services/CartService';
 import { MatBadge, MatBadgeModule } from '@angular/material/badge';
 import { Component, inject } from '@angular/core';
 import {MatIconModule} from '@angular/material/icon';
@@ -25,4 +26,5 @@ import { MatProgressBar } from '@angular/material/progress-bar';
 })
 export class Header {
   busyService = inject(Busy);
+  cartService = inject(CartService);
 }

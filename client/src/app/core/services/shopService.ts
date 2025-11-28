@@ -8,7 +8,7 @@ import { Product } from '../../shared/models/products';
   providedIn: 'root'
 })
 export class ShopService {
-  baseUrl = 'https://localhost:5001/api/';
+  baseUrl = 'http://localhost:5000/api/';
   private http = inject(HttpClient);
   types: string[]=[];
   brands: string[]=[];
