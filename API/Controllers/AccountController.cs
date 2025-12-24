@@ -62,7 +62,7 @@ namespace API.Controllers
                 address = user.Address?.ToDto()
             });
         }
-        [HttpGet]
+        [HttpGet("auth-status")]
         public ActionResult GetAuthState()
         {
             return Ok(new

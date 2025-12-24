@@ -7,6 +7,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { errorInterceptor } from './core/interceptors/error-interceptor';
 import { loadingInterceptor } from './core/interceptors/loading-interceptor';
 import { lastValueFrom } from 'rxjs';
+import { authInterceptor } from './core/interceptors/auth-interceptor';
 
 function initializeApp(InitService: InitService) {
   return () => lastValueFrom(InitService.init()).finally(() => {
@@ -24,7 +25,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
-    provideHttpClient(withInterceptors([errorInterceptor , loadingInterceptor])),
+    provideHttpClient(withInterceptors([errorInterceptor , loadingInterceptor , authInterceptor])),
     {
       provide: APP_INITIALIZER,
       useFactory: initializeApp,
