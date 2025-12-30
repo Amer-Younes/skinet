@@ -12,6 +12,9 @@ import { Register } from './features/account/register/register';
 import { authGuard } from './core/guards/auth-guard';
 import { cartGuard } from './core/guards/cart-guard';
 import { CheckoutSuccess } from './features/checkout/checkout-success/checkout-success';
+import { Order } from './features/orders/order';
+import { OrderDetailed } from './features/orders/order-detailed/order-detailed';
+import { orderCompleteGuard } from './core/guards/order-complete-guard';
 
 
 export const routes: Routes = [
@@ -20,7 +23,9 @@ export const routes: Routes = [
   { path: 'shop/:id', component: ProductDetails },
   { path: 'cart', component: Cart },
   { path: 'checkout', component: Checkout , canActivate: [authGuard , cartGuard]},
-  { path: 'checkout/success', component: CheckoutSuccess , canActivate: [authGuard]},
+  { path: 'checkout/success', component: CheckoutSuccess , canActivate: [authGuard , orderCompleteGuard]},
+  { path: 'orders', component: Order , canActivate: [authGuard]},
+  { path: 'orders/:id', component: OrderDetailed , canActivate: [authGuard]},
   { path: 'account/login', component: Login },
   { path: 'account/register', component: Register },
   { path: 'test-error', component: TestError },
