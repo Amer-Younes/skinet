@@ -1,3 +1,4 @@
+import { firstValueFrom } from 'rxjs';
 import { CurrencyPipe } from '@angular/common';
 import { CheckoutService } from './../../../core/services/checkout-service';
 import { Component, inject, OnInit, output } from '@angular/core';
@@ -33,12 +34,12 @@ export class CheckoutDelivery implements OnInit {
 
   }
 
-  updateDeliveryMethod(method: DeliveryMethod) {
+  async updateDeliveryMethod(method: DeliveryMethod) {
     this.cartService.selectedDelivery.set(method);
     const cart = this.cartService.cart();
     if(cart){
       cart.deliveryMethodId = method.id;
-      this.cartService.setCart(cart);
+      await firstValueFrom(this.cartService.setCart(cart));
       this.deliveryComplete.emit(true);
     }
   }

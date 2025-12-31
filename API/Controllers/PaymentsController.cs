@@ -17,91 +17,116 @@ namespace API.Controllers
     public class PaymentsController(IPaymentService paymentService , 
     IUnitOfWork unit , ILogger<PaymentsController> logger , IConfiguration config , IHubContext<NotificationHub> hubContext) : BaseApiController
     {
-        private readonly string whSecret = config["StripeSettings:WhSecret"];
-        [Authorize]
-        [HttpPost("{cartId}")]
-        public async Task<ActionResult<ShoppingCart>> CreateOrUpdatePaymentIntent(string cartId)
-        {
-            var cart = await paymentService.CreateOrUpdatePaymentIntent(cartId);
-            if (cart == null) return BadRequest( "Problem creating or updating payment intent" );
+    private readonly string _whSecret = config["StripeSettings:WhSecret"]!;
 
-            return Ok(cart);
-        }
+    [Authorize]
+    [HttpPost("{cartId}")]
+    public async Task<ActionResult<ShoppingCart>> CreateOrUpdatePaymentIntent(string cartId)
+    {
+        var cart = await paymentService.CreateOrUpdatePaymentIntent(cartId);
 
-        [HttpGet("delivery-methods")]
-        public async Task<ActionResult<IReadOnlyList<DeliveryMethod>>> GetDeliveryMethods()
-        {
-            var methods = await unit.Repository<DeliveryMethod>().ListAllAsync();
-            return Ok(methods);
-        }
-        [HttpPost("webhook")]
-        public async Task<IActionResult> StripeWebhook()
-        {
-            var json = await new StreamReader(Request.Body).ReadToEndAsync();
+        if (cart == null) return BadRequest("Problem with your cart");
 
-            try
+        return Ok(cart);
+    }
+
+    [HttpGet("delivery-methods")]
+    public async Task<ActionResult<IReadOnlyList<DeliveryMethod>>> GetDeliveryMethods()
+    {
+        return Ok(await unit.Repository<DeliveryMethod>().ListAllAsync());
+    }
+
+    [HttpPost("webhook")]
+    public async Task<IActionResult> StripeWebhook()
+    {
+        var json = await new StreamReader(Request.Body).ReadToEndAsync();
+
+        try
+        {
+            var stripeEvent = ConstructStripeEvent(json);
+
+            if (stripeEvent.Data.Object is not PaymentIntent intent)
             {
-                var stripeEvent = ConstructStripeEvent(json);
-
-                if(stripeEvent.Data.Object is not PaymentIntent intent) 
-                    return BadRequest("Invalid event data object");
-
-                await HandlePaymentIntentSucceeded(intent);
-                return Ok();
+                return BadRequest("Invalid event data");
             }
-            catch (StripeException ex)
-            {
-                logger.LogError(ex, "Error processing Stripe webhook");
-                return StatusCode(StatusCodes.Status500InternalServerError, "Webhook error");
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "An unexpected error occurred");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred");
-            }
+
+            await HandlePaymentIntentSucceeded(intent);
+
+            return Ok();
         }
-
-        private async Task HandlePaymentIntentSucceeded(PaymentIntent intent)
+        catch (StripeException ex)
         {
-            if(intent.Status == "succeeded") 
+            logger.LogError(ex, "Stripe webhook error");
+            return StatusCode(StatusCodes.Status500InternalServerError,  "Webhook error");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An unexpected error occurred");
+            return StatusCode(StatusCodes.Status500InternalServerError,  "An unexpected error occurred");
+        }
+    }
+
+    private async Task HandlePaymentIntentSucceeded(PaymentIntent intent)
+    {
+        if (intent.Status == "succeeded") 
+        {
+            var spec = new OrderSpecification(intent.Id, true);
+            Order? order = null;
+            int retries = 5;
+            
+            
+            while (retries > 0)
             {
-                var spec = new OrderSpecification(intent.Id , true);
-                var order = await unit.Repository<Order>().GetEntityWithSpec(spec)
-                    ?? throw new Exception("Order not found for payment intent");
-
-
-                if((long)order.GetTotal()* 100 != intent.Amount)
+                order = await unit.Repository<Order>().GetEntityWithSpec(spec);
+                if (order != null) break;
+                
+                retries--;
+                if (retries > 0)
                 {
-                    order.Status = OrderStatus.PaymentMismatch;
+                    logger.LogInformation($"Order not found for PaymentIntentId {intent.Id}, retrying... ({5 - retries}/5)");
+                    await Task.Delay(500); 
                 }
-                else
-                {
-                    order.Status = OrderStatus.PaymentReceived;
-                }
-
-                await unit.Complete();
-
-                var connectionId = NotificationHub.GetConnectionIdByEmail(order.BuyerEmail);
-                if(!string.IsNullOrEmpty(connectionId))
-                {
-                    await hubContext.Clients.Client(connectionId)
-                        .SendAsync("OrderCompleteNotification" , order.ToDTO());
-                }
-
             }
-        }
 
-        private Event ConstructStripeEvent(string json)
-        {
-            try
+            if (order == null)
+                throw new Exception($"Order not found for PaymentIntentId: {intent.Id}");
+
+            var orderTotalInCents = (long)Math.Round(order.GetTotal() * 100, 
+                MidpointRounding.AwayFromZero);
+
+            if (orderTotalInCents != intent.Amount)
             {
-                return EventUtility.ConstructEvent(json , Request.Headers["Stripe-Signature"], whSecret);
+                order.Status = OrderStatus.PaymentMismatch;
+            } 
+            else
+            {
+                order.Status = OrderStatus.PaymentReceived;
             }
-            catch (Exception ex) 
+
+            await unit.Complete();
+
+            var connectionId = NotificationHub.GetConnectionIdByEmail(order.BuyerEmail);
+
+            if (!string.IsNullOrEmpty(connectionId))
             {
-                logger.LogError(ex , "Failed to construct stripe event");
-                throw new StripeException("Invalid Signature");
+                await hubContext.Clients.Client(connectionId)
+                    .SendAsync("OrderCompleteNotification", order.ToDTO());
             }
         }
     }
+
+    private Event ConstructStripeEvent(string json)
+    {
+        try
+        {
+            return EventUtility.ConstructEvent(json, Request.Headers["Stripe-Signature"], 
+                _whSecret, throwOnApiVersionMismatch: false);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to construct stripe event");
+            throw new StripeException("Invalid signature");
+        }
+    }
+}
 }

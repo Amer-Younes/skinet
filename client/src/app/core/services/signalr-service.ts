@@ -15,28 +15,26 @@ export class SignalrService {
 
   createHubConnection() {
     this.hubConnection = new HubConnectionBuilder()
-    .withUrl(this.hubUrl , {
-      withCredentials: true
-    })
-    .withAutomaticReconnect()
-    .build();
+      .withUrl(this.hubUrl, {
+        withCredentials: true
+      })
+      .withAutomaticReconnect()
+      .build();
 
-    this.hubConnection
-    .start()
-    .catch(error => console.log('Error establishing connection: ', error));
+    this.hubConnection.start()
+      .catch(error => console.log(error));
 
+    this.hubConnection.on('OrderCompleteNotification', (order: OrderModel) => {
+      this.orderSignal.set(order)
 
-    this.hubConnection?.on('OrderCompleteNotification', (order: OrderModel) => {
-      this.orderSignal.set(order);
     })
   }
 
   stopHubConnection() {
-    if(this.hubConnection?.state === HubConnectionState.Connected) {
-      this.hubConnection.stop().catch(error => console.log('Error stopping connection: ', error));
+    if (this.hubConnection?.state === HubConnectionState.Connected) {
+      this.hubConnection.stop().catch(error => console.log(error))
     }
+  }
   }
 
 
-
-}

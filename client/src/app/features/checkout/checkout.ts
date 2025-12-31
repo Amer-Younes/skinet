@@ -118,34 +118,33 @@ export class Checkout implements OnInit , OnDestroy {
     }
   }
 
-  async confirmPayment(stepper: MatStepper){
+  async confirmPayment(stepper: MatStepper) {
     this.loading = true;
     try {
-      if(this.confirmationToken){
+      if (this.confirmationToken) {
         const result = await this.stripeService.confirmPayment(this.confirmationToken);
 
-        if(result.paymentIntent?.status === 'succeeded'){
+        if (result.paymentIntent?.status === 'succeeded') {
           const order = await this.createOrderModel();
           const orderResult = await firstValueFrom(this.orderService.createOrder(order));
-          if(orderResult){
+          if (orderResult) {
             this.orderService.orderComplete = true;
             this.cartService.deleteCart();
             this.cartService.selectedDelivery.set(null);
             this.router.navigateByUrl('/checkout/success');
-          }else{
-            throw new Error("Order creation failed");
+          } else {
+            throw new Error('Order creation failed');
           }
-        }else if (result.error){
+        } else if (result.error) {
           throw new Error(result.error.message);
         } else {
-          throw new Error("Payment confirmation failed");
+          throw new Error('Something went wrong');
         }
-
       }
     } catch (error: any) {
-      this.snackbar.error(error.message || "Something went wrong during payment confirmation");
+      this.snackbar.error(error.message || 'Something went wrong');
       stepper.previous();
-    } finally{
+    } finally {
       this.loading = false;
     }
   }
@@ -168,7 +167,8 @@ export class Checkout implements OnInit , OnDestroy {
         expYear: card.exp_year
       },
       deliveryMethodId: cart.deliveryMethodId,
-      shippingAddress
+      shippingAddress,
+      discount: this.cartService.totals()?.discount
     }
   }
 
