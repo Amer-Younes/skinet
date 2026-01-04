@@ -3,10 +3,8 @@ using API.DTOs;
 using API.Extensions;
 using Core.Entities;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace API.Controllers
 {
@@ -59,7 +57,8 @@ namespace API.Controllers
                 user.FirstName,
                 user.LastName,
                 user.Email,
-                address = user.Address?.ToDto()
+                address = user.Address?.ToDto(),
+                Roles = User.FindFirstValue(ClaimTypes.Role)
             });
         }
         [HttpGet("auth-status")]

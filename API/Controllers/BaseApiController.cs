@@ -21,5 +21,17 @@ namespace API.Controllers
 
             return Ok(pagination);
         }
+
+        protected async Task<ActionResult> CreatePageResult<T , TDto>(IGenericRepository<T> repo,
+        ISpecification<T> spec, int pageIndex, int pageSize , Func<T, TDto> toDTO) where T : BaseEntity , IDtoConvertible
+        {
+            var items = await repo.ListAsync(spec);
+            var count = await repo.CountAsync(spec);
+            var dtoItems = items.Select(toDTO).ToList();
+
+            var pagination = new Pagintion<TDto>(pageIndex, pageSize, count, dtoItems);
+
+            return Ok(pagination);
+        }
     }
 }

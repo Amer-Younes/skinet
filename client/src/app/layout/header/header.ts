@@ -9,6 +9,7 @@ import { Busy } from '../../core/services/busy';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import { Account } from '../../core/services/account';
 import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
+import { IsAdmin } from "../../shared/directives/is-admin";
 
 
 @Component({
@@ -25,8 +26,10 @@ import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
     MatMenuTrigger,
     MatMenu,
     MatDivider,
-    MatMenuItem
-  ],
+    MatMenuItem,
+    IsAdmin,
+    IsAdmin
+],
   templateUrl: './header.html',
   styleUrls: ['./header.scss']
 })
